@@ -10,11 +10,11 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/caphefalumi/smart-home/server/config"
-	"github.com/caphefalumi/smart-home/server/database"
-	"github.com/caphefalumi/smart-home/server/handlers"
-	"github.com/caphefalumi/smart-home/server/serial"
-	"github.com/caphefalumi/smart-home/server/services"
+	"github.com/caphefalumi/smart-home/config"
+	"github.com/caphefalumi/smart-home/database"
+	"github.com/caphefalumi/smart-home/handlers"
+	"github.com/caphefalumi/smart-home/serial"
+	"github.com/caphefalumi/smart-home/services"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 )

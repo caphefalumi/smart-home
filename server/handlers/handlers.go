@@ -6,9 +6,9 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/caphefalumi/smart-home/server/models"
-	"github.com/caphefalumi/smart-home/server/serial"
-	"github.com/caphefalumi/smart-home/server/services"
+	"github.com/caphefalumi/smart-home/models"
+	"github.com/caphefalumi/smart-home/serial"
+	"github.com/caphefalumi/smart-home/services"
 	"github.com/gin-gonic/gin"
 	"go.mongodb.org/mongo-driver/mongo"
 )

@@ -351,7 +351,7 @@ const navigationItems = computed(() => [
 const availablePortsFormatted = computed(() => 
   availablePorts.value.map(port => ({
     ...port,
-    displayName: `${port.path} - ${port.manufacturer || 'Unknown Device'}`
+    displayName: `${port.name}`
   }))
 );
 

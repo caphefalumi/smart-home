@@ -6,8 +6,8 @@ import (
 	"log"
 	"time"
 
-	"github.com/caphefalumi/smart-home/server/database"
-	"github.com/caphefalumi/smart-home/server/models"
+	"github.com/caphefalumi/smart-home/database"
+	"github.com/caphefalumi/smart-home/models"
 	"github.com/qiniu/qmgo"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"

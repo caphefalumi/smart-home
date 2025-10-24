@@ -11,8 +11,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/caphefalumi/smart-home/server/models"
-	"github.com/caphefalumi/smart-home/server/services"
+	"github.com/caphefalumi/smart-home/models"
+	"github.com/caphefalumi/smart-home/services"
 	"github.com/tarm/serial"
 )
 
