@@ -106,6 +106,23 @@
                 </v-card>
               </v-col>
             </v-row>
+            
+            <!-- Music Controls Section -->
+            <v-divider class="my-4"></v-divider>
+            <h3 class="mb-3 text-grey-darken-2">🎵 Music & Entertainment</h3>
+            <v-row>
+              <v-col v-for="music in musicControls" :key="music.title" cols="12" sm="6" md="4">
+                <v-card flat class="minimal-control-card pa-3">
+                  <div class="d-flex align-center mb-2">
+                    <v-icon size="32" :color="music.iconColor" class="mr-2">{{ music.icon }}</v-icon>
+                    <span class="font-weight-bold">{{ music.title }}</span>
+                  </div>
+                  <v-btn @click="music.action()" :color="music.color" variant="flat" size="small" :disabled="!isConnected" block>
+                    {{ music.label }}
+                  </v-btn>
+                </v-card>
+              </v-col>
+            </v-row>
           </v-window-item>
 
           <!-- Analytics Tab -->
@@ -133,12 +150,13 @@
                 </v-card>
               </v-col>
             </v-row>
-            <v-sheet height="220" class="d-flex align-center justify-center rounded-lg mt-2" color="grey-lighten-4">
-              <div class="text-center">
-                <v-icon size="40" color="grey">mdi-chart-line</v-icon>
-                <div class="text-caption">Chart coming soon</div>
+            <v-card flat class="minimal-analytics-card pa-3 mt-2">
+              <div class="d-flex align-center justify-space-between mb-2">
+                <span class="font-weight-bold">Sensor Trends</span>
+                <span class="text-caption text-grey-darken-1">Last {{ analyticsHours }} hours</span>
               </div>
-            </v-sheet>
+              <SensorTrendChart :labels="trendChartLabels" :datasets="trendChartDatasets" :loading="trendsLoading" />
+            </v-card>
           </v-window-item>
 
           <!-- Rules Tab -->
@@ -153,7 +171,14 @@
                     <v-text-field v-model="newRule.name" label="Name" variant="outlined" clearable></v-text-field>
                   </v-col>
                   <v-col cols="12" md="6">
-                    <v-select v-model="newRule.sensor" :items="sensorTypes" item-title="label" item-value="key" label="Sensor" variant="outlined"></v-select>
+                    <v-select
+                      v-model="newRule.sensor"
+                      :items="ruleSensorOptions"
+                      item-title="label"
+                      item-value="key"
+                      label="Sensor"
+                      variant="outlined"
+                    ></v-select>
                   </v-col>
                   <v-col cols="12" md="4">
                     <v-select v-model="newRule.operator" :items="operatorOptions" label="Condition" variant="outlined"></v-select>
@@ -176,13 +201,13 @@
                 <v-card flat class="minimal-rule-card pa-3 mb-2">
                   <div class="d-flex align-center justify-space-between">
                     <span class="font-weight-bold">{{ rule.name }}</span>
-                    <v-switch :model-value="rule.enabled" @update:model-value="toggleRule(rule._id, $event)" color="success" density="compact" hide-details></v-switch>
+                    <v-switch :model-value="rule.enabled" @update:model-value="toggleRule(rule._id?.toString(), $event)" color="success" density="compact" hide-details></v-switch>
                   </div>
                   <div class="text-caption mt-1">IF {{ getSensorLabel(rule.sensor) }} {{ rule.operator }} {{ rule.threshold }} THEN {{ getActionLabel(rule.action) }}</div>
                   <div v-if="rule.description" class="text-caption mt-1">{{ rule.description }}</div>
                   <div class="d-flex align-center justify-space-between mt-1">
                     <span class="text-caption">{{ formatTime(rule.createdAt) }}</span>
-                    <v-btn @click="deleteRule(rule._id)" color="error" size="x-small" icon="mdi-delete-outline" variant="text"></v-btn>
+                    <v-btn @click="deleteRule(rule._id?.toString())" color="error" size="x-small" icon="mdi-delete-outline" variant="text"></v-btn>
                   </div>
                 </v-card>
               </v-col>
@@ -253,11 +278,24 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed } from 'vue';
+import { ref, onMounted, onUnmounted, computed, watch } from 'vue';
 import { useTheme } from 'vuetify';
+import SensorTrendChart from './components/SensorTrendChart.vue';
 
 const theme = useTheme();
 const API_URL = 'http://localhost:3000/api';
+
+interface TrendPoint {
+  hour: string;
+  light?: number;
+  gas?: number;
+  soil?: number;
+  water?: number;
+  count?: number;
+}
+
+const sensorKeys = ['light', 'gas', 'soil', 'water', 'infrar'] as const;
+type SensorKey = typeof sensorKeys[number];
 
 // Enhanced State Management
 const isConnected = ref(false);
@@ -287,6 +325,14 @@ const recentAlerts = ref<any[]>([]);
 const statistics = ref<any>({});
 const analyticsHours = ref(24);
 const selectedSensor = ref('all');
+const trendData = ref<TrendPoint[]>([]);
+const trendsLoading = ref(false);
+const sensorColorMap: Record<SensorKey, { border: string; background: string }> = {
+  light: { border: '#ffca28', background: 'rgba(255, 202, 40, 0.2)' },
+  gas: { border: '#ef5350', background: 'rgba(239, 83, 80, 0.2)' },
+  soil: { border: '#66bb6a', background: 'rgba(102, 187, 106, 0.2)' },
+  water: { border: '#42a5f5', background: 'rgba(66, 165, 245, 0.2)' }
+};
 const showRuleForm = ref(false);
 const currentTab = ref('dashboard');
 const drawer = ref(false);
@@ -398,6 +444,39 @@ const sensorTypes = [
     thresholds: { low: 0, high: 1 }
   }
 ];
+
+const ruleSensorOptions = computed(() =>
+  sensorTypes.filter(sensor => sensorKeys.includes(sensor.key as SensorKey))
+);
+
+const trendChartLabels = computed(() => trendData.value.map(point => point.hour));
+
+const trendChartDatasets = computed(() => {
+  if (!trendData.value.length) {
+    return [];
+  }
+
+  const keys: SensorKey[] = selectedSensor.value === 'all'
+    ? [...sensorKeys]
+    : sensorKeys.includes(selectedSensor.value as SensorKey)
+      ? [selectedSensor.value as SensorKey]
+      : [...sensorKeys];
+
+  return keys.map((key) => {
+    const palette = sensorColorMap[key];
+    return {
+      label: getSensorLabel(key),
+      data: trendData.value.map((point) => {
+        const rawValue = (point as Record<string, unknown>)[key];
+        return typeof rawValue === 'number' ? Math.round(rawValue * 100) / 100 : 0;
+      }),
+      borderColor: palette.border,
+      backgroundColor: palette.background,
+      tension: 0.3,
+      fill: false
+    };
+  });
+});
 
 // Quick actions for dashboard
 const quickActions = [
@@ -514,6 +593,34 @@ const deviceControls = [
     offIcon: 'mdi-volume-off',
     onColor: 'error',
     offColor: 'success'
+  }
+];
+
+// Music controls for entertainment
+const musicControls = [
+  {
+    title: 'Birthday Song',
+    icon: 'mdi-cake-variant',
+    iconColor: 'pink',
+    action: () => playMusic('birthday'),
+    label: 'Play Song',
+    color: 'success'
+  },
+  {
+    title: 'Ode to Joy',
+    icon: 'mdi-music-note',
+    iconColor: 'purple',
+    action: () => playMusic('ode-to-joy'),
+    label: 'Play Classical',
+    color: 'info'
+  },
+  {
+    title: 'Stop Music',
+    icon: 'mdi-stop',
+    iconColor: 'red',
+    action: () => stopMusic(),
+    label: 'Stop All',
+    color: 'error'
   }
 ];
 
@@ -678,6 +785,55 @@ async function sendAdvancedCommand(control: any, value: number) {
   }
 }
 
+// Music control functions
+async function playMusic(type: 'birthday' | 'ode-to-joy') {
+  if (!isConnected.value) {
+    showSnackbar('Please connect to Arduino first', 'warning');
+    return;
+  }
+
+  try {
+    const endpoint = type === 'birthday' ? 'birthday' : 'ode-to-joy';
+    const response = await fetch(`${API_URL}/music/${endpoint}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' }
+    });
+    
+    if (response.ok) {
+      const songName = type === 'birthday' ? 'Birthday Song' : 'Ode to Joy';
+      showSnackbar(`🎵 Playing ${songName}`, 'success');
+    } else {
+      throw new Error('Failed to play music');
+    }
+  } catch (error) {
+    console.error('Music play error:', error);
+    showSnackbar('Failed to play music', 'error');
+  }
+}
+
+async function stopMusic() {
+  if (!isConnected.value) {
+    showSnackbar('Please connect to Arduino first', 'warning');
+    return;
+  }
+
+  try {
+    const response = await fetch(`${API_URL}/music/stop`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' }
+    });
+    
+    if (response.ok) {
+      showSnackbar('🔇 Music stopped', 'info');
+    } else {
+      throw new Error('Failed to stop music');
+    }
+  } catch (error) {
+    console.error('Music stop error:', error);
+    showSnackbar('Failed to stop music', 'error');
+  }
+}
+
 async function executeScene(scene: any) {
   if (!isConnected.value) {
     showSnackbar('Please connect to Arduino first', 'warning');
@@ -718,7 +874,17 @@ async function loadRules() {
   try {
     const response = await fetch(`${API_URL}/rules`);
     if (response.ok) {
-      rules.value = await response.json();
+      const rulesData = await response.json();
+      console.log('Loaded rules:', rulesData);
+      // Log the structure of each rule to see the _id format
+      rulesData.forEach((rule: any, index: number) => {
+        console.log(`Rule ${index}:`, {
+          _id: rule._id,
+          _id_type: typeof rule._id,
+          name: rule.name
+        });
+      });
+      rules.value = rulesData;
     }
   } catch (error) {
     console.error('Error loading rules:', error);
@@ -739,7 +905,16 @@ async function createRule() {
       loadRules();
       showSnackbar('Rule created successfully', 'success');
     } else {
-      throw new Error('Failed to create rule');
+      let message = 'Failed to create rule';
+      try {
+        const errorData = await response.json();
+        if (errorData?.error) {
+          message = errorData.error;
+        }
+      } catch (parseError) {
+        console.error('Error parsing rule creation error:', parseError);
+      }
+      throw new Error(message);
     }
   } catch (error) {
     console.error('Error creating rule:', error);
@@ -761,13 +936,33 @@ function resetRuleForm() {
 
 async function toggleRule(id: string, enabled: boolean) {
   try {
-    await fetch(`${API_URL}/rules/${id}`, {
+    const ruleId = id?.toString() || '';
+    if (!ruleId) {
+      showSnackbar('Invalid rule ID', 'error');
+      return;
+    }
+    
+    console.log('Toggling rule:', {
+      originalId: id,
+      convertedId: ruleId,
+      idType: typeof id,
+      enabled: enabled
+    });
+    
+    const response = await fetch(`${API_URL}/rules/${ruleId}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ enabled })
     });
-    loadRules();
-    showSnackbar(enabled ? 'Rule enabled' : 'Rule disabled', 'info');
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error('Toggle rule error response:', errorData);
+      throw new Error(errorData.error || 'Failed to update rule');
+    }
+    
+    await loadRules();
+    showSnackbar(enabled ? 'Rule enabled' : 'Rule disabled', 'success');
   } catch (error) {
     console.error('Error toggling rule:', error);
     showSnackbar('Failed to update rule', 'error');
@@ -778,8 +973,29 @@ async function deleteRule(id: string) {
   if (!confirm('Are you sure you want to delete this rule?')) return;
   
   try {
-    await fetch(`${API_URL}/rules/${id}`, { method: 'DELETE' });
-    loadRules();
+    const ruleId = id?.toString() || '';
+    if (!ruleId) {
+      showSnackbar('Invalid rule ID', 'error');
+      return;
+    }
+    
+    console.log('Deleting rule:', {
+      originalId: id,
+      convertedId: ruleId,
+      idType: typeof id
+    });
+    
+    const response = await fetch(`${API_URL}/rules/${ruleId}`, { 
+      method: 'DELETE' 
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error('Delete rule error response:', errorData);
+      throw new Error(errorData.error || 'Failed to delete rule');
+    }
+    
+    await loadRules();
     showSnackbar('Rule deleted successfully', 'success');
   } catch (error) {
     console.error('Error deleting rule:', error);
@@ -797,6 +1013,24 @@ async function loadAnalytics() {
   } catch (error) {
     console.error('Error loading analytics:', error);
     showSnackbar('Failed to load analytics', 'error');
+  }
+}
+
+async function loadTrends() {
+  try {
+    trendsLoading.value = true;
+    const response = await fetch(`${API_URL}/analytics/trends?hours=${analyticsHours.value}`);
+    if (!response.ok) {
+      throw new Error('Failed to load trends');
+    }
+    const data = await response.json();
+    trendData.value = Array.isArray(data) ? data : [];
+  } catch (error) {
+    console.error('Error loading trends:', error);
+    trendData.value = [];
+    showSnackbar('Failed to load trend data', 'error');
+  } finally {
+    trendsLoading.value = false;
   }
 }
 
@@ -1040,10 +1274,16 @@ function showSnackbar(message: string, color: string) {
 }
 
 // Lifecycle
+watch(analyticsHours, () => {
+  loadAnalytics();
+  loadTrends();
+});
+
 onMounted(() => {
   refreshPorts();
   loadRules();
   loadAnalytics();
+  loadTrends();
   loadAlerts();
 });
 

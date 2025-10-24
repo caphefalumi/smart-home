@@ -8,7 +8,7 @@ import (
 
 // SensorData represents sensor readings from Arduino
 type SensorData struct {
-	ID        primitive.ObjectID `bson:"_id,omitempty" json:"id,omitempty"`
+	ID        primitive.ObjectID `bson:"_id,omitempty" json:"_id,omitempty"`
 	Light     int                `bson:"light" json:"light"`
 	Gas       int                `bson:"gas" json:"gas"`
 	Soil      int                `bson:"soil" json:"soil"`
@@ -44,7 +44,7 @@ type ActuatorStates struct {
 
 // Rule represents automation rules
 type Rule struct {
-	ID          primitive.ObjectID `bson:"_id,omitempty" json:"id,omitempty"`
+	ID          primitive.ObjectID `bson:"_id,omitempty" json:"_id,omitempty"`
 	Name        string             `bson:"name" json:"name"`
 	Sensor      string             `bson:"sensor" json:"sensor"`
 	Operator    string             `bson:"operator" json:"operator"`

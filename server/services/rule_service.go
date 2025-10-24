@@ -104,11 +104,11 @@ func (r *RuleService) DeleteRule(id string) error {
 }
 
 // EvaluateRules evaluates all active rules against sensor data
-func (r *RuleService) EvaluateRules(sensorData *models.SensorReading) []string {
+func (r *RuleService) EvaluateRules(sensorData *models.SensorReading) ([]string, []string) {
 	rules, err := r.GetAllRules()
 	if err != nil {
 		log.Printf("Error getting rules for evaluation: %v", err)
-		return nil
+		return nil, nil
 	}
 
 	var triggeredActions []string
@@ -129,6 +129,8 @@ func (r *RuleService) EvaluateRules(sensorData *models.SensorReading) []string {
 			sensorValue = sensorData.Soil
 		case "water":
 			sensorValue = sensorData.Water
+		case "infrar":
+			sensorValue = sensorData.Infrar
 		default:
 			continue
 		}
@@ -146,7 +148,6 @@ func (r *RuleService) EvaluateRules(sensorData *models.SensorReading) []string {
 		case "==":
 			triggered = sensorValue == rule.Threshold
 		}
-
 		if triggered {
 			triggeredActions = append(triggeredActions, rule.Action)
 			alerts = append(alerts, fmt.Sprintf("%s: %s %s %d (current: %d)",
@@ -157,7 +158,7 @@ func (r *RuleService) EvaluateRules(sensorData *models.SensorReading) []string {
 		}
 	}
 
-	return alerts
+	return alerts, triggeredActions
 }
 
 // CountRules returns the total number of rules

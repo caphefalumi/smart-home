@@ -117,12 +117,19 @@ func setupRouter(h *handlers.Handlers) *gin.Engine {
 			sensors.GET("/current", h.GetCurrentSensorData)
 			sensors.GET("/history", h.GetSensorHistory)
 		}
-
 		// Actuator endpoints
 		actuators := api.Group("/actuators")
 		{
 			actuators.GET("/states", h.GetActuatorStates)
 			actuators.POST("/sync", h.SyncActuatorState)
+		}
+
+		// Music endpoints
+		music := api.Group("/music")
+		{
+			music.POST("/birthday", h.PlayBirthdaySong)
+			music.POST("/ode-to-joy", h.PlayOdeToJoy)
+			music.POST("/stop", h.StopMusic)
 		}
 
 		// Analytics endpoints

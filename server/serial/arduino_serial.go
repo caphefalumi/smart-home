@@ -30,6 +30,7 @@ type ArduinoSerial struct {
 	mutex          sync.RWMutex
 	stopChan       chan bool
 	saveInterval   time.Duration
+	wg             sync.WaitGroup
 }
 
 // NewArduinoSerial creates a new Arduino serial handler
@@ -94,8 +95,8 @@ func (a *ArduinoSerial) Connect(portName string, baudRate int) error {
 
 	// Wait for Arduino to reset
 	time.Sleep(2 * time.Second)
-
 	// Start data processing goroutines
+	a.wg.Add(2)
 	go a.startDataListener()
 	go a.startDataSaver()
 
@@ -112,18 +113,39 @@ func (a *ArduinoSerial) Disconnect() error {
 		return nil
 	}
 
-	// Stop background processes
-	close(a.stopChan)
+	// Signal goroutines to stop
+	select {
+	case <-a.stopChan:
+		// Channel already closed
+	default:
+		close(a.stopChan)
+	}
 
-	// Save any remaining buffered data
-	a.saveBufferedData()
-
+	// Close the port first to unblock scanner.Scan()
 	if a.port != nil {
 		a.port.Close()
 		a.port = nil
 	}
 
 	a.isConnected = false
+
+	// Wait for goroutines to finish with timeout
+	done := make(chan struct{})
+	go func() {
+		a.wg.Wait()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		log.Println("✓ All goroutines stopped")
+	case <-time.After(3 * time.Second):
+		log.Println("⚠ Timeout waiting for goroutines to stop")
+	}
+
+	// Save any remaining buffered data
+	a.saveBufferedData()
+
 	log.Println("✓ Disconnected from Arduino")
 	return nil
 }
@@ -218,6 +240,8 @@ func (a *ArduinoSerial) SetActuatorState(actuator string, value interface{}) {
 
 // startDataListener listens for incoming data from Arduino
 func (a *ArduinoSerial) startDataListener() {
+	defer a.wg.Done()
+
 	scanner := bufio.NewScanner(a.port)
 
 	for scanner.Scan() {
@@ -240,6 +264,8 @@ func (a *ArduinoSerial) startDataListener() {
 
 // startDataSaver periodically saves buffered data
 func (a *ArduinoSerial) startDataSaver() {
+	defer a.wg.Done()
+
 	ticker := time.NewTicker(a.saveInterval)
 	defer ticker.Stop()
 
@@ -332,6 +358,8 @@ func (a *ArduinoSerial) parseSensorData(line string) {
 	a.mutex.Lock()
 	a.currentData = data
 
+	var actionsToExecute []string
+
 	// Add to buffer for saving
 	sensorData := models.SensorData{
 		Light:     data.Light,
@@ -341,14 +369,14 @@ func (a *ArduinoSerial) parseSensorData(line string) {
 		Infrared:  data.Infrar,
 		Timestamp: data.Timestamp,
 	}
-
-	// Evaluate rules and get alerts
-	alerts := a.ruleService.EvaluateRules(data)
+	// Evaluate rules and get alerts and triggered actions
+	alerts, triggeredActions := a.ruleService.EvaluateRules(data)
 	if len(alerts) > 0 {
 		sensorData.Alerts = alerts
+	}
 
-		// Execute triggered actions
-		a.executeTriggeredActions(alerts)
+	if len(triggeredActions) > 0 {
+		actionsToExecute = append(actionsToExecute, triggeredActions...)
 	}
 
 	a.dataBuffer = append(a.dataBuffer, sensorData)
@@ -359,6 +387,14 @@ func (a *ArduinoSerial) parseSensorData(line string) {
 	}
 
 	a.mutex.Unlock()
+
+	if len(actionsToExecute) > 0 {
+		copyOfActions := actionsToExecute
+		go func(actions []string) {
+			// Execute outside the data lock to keep sensor polling responsive.
+			a.executeTriggeredActions(actions)
+		}(copyOfActions)
+	}
 }
 
 // parseActuatorResponse parses actuator state changes from Arduino
@@ -409,16 +445,14 @@ func (a *ArduinoSerial) parseActuatorResponse(line string) {
 }
 
 // executeTriggeredActions executes actions based on triggered rules
-func (a *ArduinoSerial) executeTriggeredActions(alerts []string) {
-	// Extract actions from alerts and execute them
-	for _, alert := range alerts {
-		// Simple action extraction - in production, you'd parse this more robustly
-		if strings.Contains(alert, "buzzer_on") {
-			a.SendCommand("BUZZER_ON")
-		} else if strings.Contains(alert, "white_light_on") {
-			a.SendCommand("WHITE_LIGHT_ON")
-		} else if strings.Contains(alert, "window_close") {
-			a.SendCommand("WINDOW_CLOSE")
+func (a *ArduinoSerial) executeTriggeredActions(actions []string) {
+	log.Printf("Executing %d triggered actions: %v", len(actions), actions)
+
+	for _, action := range actions {
+		log.Printf("Executing action '%s'", action)
+		err := a.SendCommand(action)
+		if err != nil {
+			log.Printf("Error executing action '%s': %v", action, err)
 		}
 	}
 }

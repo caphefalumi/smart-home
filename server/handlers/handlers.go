@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 	"strconv"
 	"time"
@@ -254,6 +255,12 @@ func (h *Handlers) GetRules(c *gin.Context) {
 		return
 	}
 
+	// Add logging to see rule structure
+	log.Printf("GetRules: Returning %d rules", len(rules))
+	for i, rule := range rules {
+		log.Printf("Rule %d: ID=%s, Name=%s", i, rule.ID.Hex(), rule.Name)
+	}
+
 	c.JSON(http.StatusOK, rules)
 }
 
@@ -261,7 +268,7 @@ func (h *Handlers) GetRules(c *gin.Context) {
 func (h *Handlers) CreateRule(c *gin.Context) {
 	var rule struct {
 		Name        string `json:"name" binding:"required"`
-		Sensor      string `json:"sensor" binding:"required,oneof=gas light soil water"`
+		Sensor      string `json:"sensor" binding:"required,oneof=gas light soil water infrar"`
 		Operator    string `json:"operator" binding:"required,oneof=> < >= <= =="`
 		Threshold   int    `json:"threshold" binding:"required"`
 		Action      string `json:"action" binding:"required"`
@@ -270,6 +277,7 @@ func (h *Handlers) CreateRule(c *gin.Context) {
 	}
 
 	if err := c.ShouldBindJSON(&rule); err != nil {
+		log.Printf("CreateRule: bind error: %v", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -297,14 +305,21 @@ func (h *Handlers) CreateRule(c *gin.Context) {
 func (h *Handlers) UpdateRule(c *gin.Context) {
 	id := c.Param("id")
 
+	// Add logging
+	log.Printf("UpdateRule: Received ID: '%s', Type: %T", id, id)
+
 	var updates map[string]interface{}
 	if err := c.ShouldBindJSON(&updates); err != nil {
+		log.Printf("UpdateRule: JSON binding error: %v", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
+	log.Printf("UpdateRule: Updates: %+v", updates)
+
 	rule, err := h.ruleService.UpdateRule(id, updates)
 	if err != nil {
+		log.Printf("UpdateRule: Service error: %v", err)
 		if err == mongo.ErrNoDocuments {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Rule not found"})
 			return
@@ -320,8 +335,12 @@ func (h *Handlers) UpdateRule(c *gin.Context) {
 func (h *Handlers) DeleteRule(c *gin.Context) {
 	id := c.Param("id")
 
+	// Add logging
+	log.Printf("DeleteRule: Received ID: '%s', Type: %T", id, id)
+
 	err := h.ruleService.DeleteRule(id)
 	if err != nil {
+		log.Printf("DeleteRule: Service error: %v", err)
 		if err == mongo.ErrNoDocuments {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Rule not found"})
 			return
@@ -348,4 +367,52 @@ func (h *Handlers) GetAlerts(c *gin.Context) {
 		alerts = []models.SensorData{}
 	}
 	c.JSON(http.StatusOK, alerts)
+}
+
+// PlayBirthdaySong plays the birthday song
+func (h *Handlers) PlayBirthdaySong(c *gin.Context) {
+	if !h.serialService.IsConnected() {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Arduino not connected"})
+		return
+	}
+
+	err := h.serialService.SendCommand("play_birthday")
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Playing birthday song"})
+}
+
+// PlayOdeToJoy plays Ode to Joy
+func (h *Handlers) PlayOdeToJoy(c *gin.Context) {
+	if !h.serialService.IsConnected() {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Arduino not connected"})
+		return
+	}
+
+	err := h.serialService.SendCommand("play_ode_to_joy")
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Playing Ode to Joy"})
+}
+
+// StopMusic stops the currently playing music
+func (h *Handlers) StopMusic(c *gin.Context) {
+	if !h.serialService.IsConnected() {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Arduino not connected"})
+		return
+	}
+
+	err := h.serialService.SendCommand("stop_music")
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Music stopped"})
 }

@@ -20,7 +20,7 @@ type SensorService struct {
 func NewSensorService(db *database.Database) *SensorService {
 	return &SensorService{
 		db:         db,
-		collection: "sensordata",
+		collection: "sensordatas",
 	}
 }
 
