@@ -1,17 +1,17 @@
-# smart-home
+# Introduction
 
 A modern smart home automation system with real-time sensor monitoring, rule-based automation, and device control.
 
-## 🚀 Demo
+## Demo
 
-![Demo Screenshot](public/demo.png)
+![Demo Video](https://youtu.be/VcMubtFll-w)
 
 - View live sensor data (gas, light, soil, water, infrared)
 - Set up automation rules (e.g., "Turn on fan if gas > 100")
 - Control actuators (lights, fan, relay, buzzer, etc.)
 - See analytics and trends
 
-## 🎯 Purpose
+## Purpose
 
 This project helps homeowners and researchers monitor and automate their environment using affordable sensors and actuators. It brings value by:
 
@@ -19,11 +19,7 @@ This project helps homeowners and researchers monitor and automate their environ
 - Saving energy (automated lighting/fan control)
 - Enabling remote monitoring and control
 
-## 📢 Promote
-
-If you find this project useful, please star ⭐ the repo, share it, or give feedback via Issues!
-
-## 🛠️ Installation
+## Installation
 
 1. Clone the repository:
 
@@ -59,7 +55,7 @@ If you find this project useful, please star ⭐ the repo, share it, or give fee
    bun dev
    ```
 
-## ⚡ Quick Start
+## Quick Start
 
 - Open [http://localhost:5173](http://localhost:5173) in your browser
 - Connect your Arduino via serial port
