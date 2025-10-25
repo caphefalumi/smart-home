@@ -67,19 +67,25 @@ func main() {
 	fmt.Println("\n🛑 Shutting down gracefully...")
 
 	// Shutdown server with timeout
+	log.Println("[SHUTDOWN] Creating shutdown context with 5s timeout...")
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	// Disconnect serial
+	log.Println("[SHUTDOWN] Disconnecting serial service...")
 	if err := serialService.Disconnect(); err != nil {
-		log.Printf("Error disconnecting serial: %v", err)
+		log.Printf("[SHUTDOWN] Error disconnecting serial: %v", err)
+	} else {
+		log.Println("[SHUTDOWN] Serial service disconnected.")
 	}
 
-	// Shutdown HTTP server
+	log.Println("[SHUTDOWN] Shutting down HTTP server...")
 	if err := srv.Shutdown(ctx); err != nil {
-		log.Fatalf("Server forced to shutdown: %v", err)
+		log.Fatalf("[SHUTDOWN] Server forced to shutdown: %v", err)
+	} else {
+		log.Println("[SHUTDOWN] HTTP server shutdown complete.")
 	}
 
+	log.Println("[SHUTDOWN] All shutdown steps complete. Exiting.")
 	fmt.Println("Server exited")
 }
 
