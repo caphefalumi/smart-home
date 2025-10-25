@@ -135,21 +135,6 @@
                 <v-select v-model="selectedSensor" :items="analyticsChartOptions" label="Chart View" variant="outlined" density="compact"></v-select>
               </v-col>
             </v-row>
-            <v-row class="mt-2">
-              <v-col v-for="sensor in sensorTypes" :key="sensor.key" cols="12" sm="6" md="3">
-                <v-card flat class="minimal-analytics-card pa-3">
-                  <div class="font-weight-bold mb-1">{{ sensor.label }}</div>
-                  <div class="d-flex gap-2">
-                    <span class="text-caption">Avg:</span>
-                    <span class="font-weight-bold">{{ getStatValue(sensor.key, 'mean') }}</span>
-                    <span class="text-caption">Min:</span>
-                    <span class="font-weight-bold">{{ getStatValue(sensor.key, 'min') }}</span>
-                    <span class="text-caption">Max:</span>
-                    <span class="font-weight-bold">{{ getStatValue(sensor.key, 'max') }}</span>
-                  </div>
-                </v-card>
-              </v-col>
-            </v-row>
             <v-card flat class="minimal-analytics-card pa-3 mt-2">
               <div class="d-flex align-center justify-space-between mb-2">
                 <span class="font-weight-bold">Sensor Trends</span>
@@ -331,7 +316,8 @@ const sensorColorMap: Record<SensorKey, { border: string; background: string }> 
   light: { border: '#ffca28', background: 'rgba(255, 202, 40, 0.2)' },
   gas: { border: '#ef5350', background: 'rgba(239, 83, 80, 0.2)' },
   soil: { border: '#66bb6a', background: 'rgba(102, 187, 106, 0.2)' },
-  water: { border: '#42a5f5', background: 'rgba(66, 165, 245, 0.2)' }
+  water: { border: '#42a5f5', background: 'rgba(66, 165, 245, 0.2)' },
+  infrar: { border: '#9e9e9e', background: 'rgba(158, 158, 158, 0.2)' }   
 };
 const showRuleForm = ref(false);
 const currentTab = ref('dashboard');
@@ -413,7 +399,7 @@ const sensorTypes = [
   },
   { 
     key: 'gas', 
-    label: 'Gas Level', 
+    label: 'Gas Level2', 
     icon: 'mdi-gas-cylinder',
     color: 'red',
     unit: 'ppm',

@@ -15,15 +15,17 @@ import (
 
 // RuleService handles rule operations
 type RuleService struct {
-	db         *database.Database
-	collection string
+	db            *database.Database
+	collection    string
+	lastTriggered map[string]time.Time // map of rule ID to last triggered time
 }
 
 // NewRuleService creates a new rule service
 func NewRuleService(db *database.Database) *RuleService {
 	return &RuleService{
-		db:         db,
-		collection: "rules",
+		db:            db,
+		collection:    "rules",
+		lastTriggered: make(map[string]time.Time),
 	}
 }
 
@@ -148,13 +150,23 @@ func (r *RuleService) EvaluateRules(sensorData *models.SensorReading) ([]string,
 		case "==":
 			triggered = sensorValue == rule.Threshold
 		}
-		if triggered {
-			triggeredActions = append(triggeredActions, rule.Action)
-			alerts = append(alerts, fmt.Sprintf("%s: %s %s %d (current: %d)",
-				rule.Name, rule.Sensor, rule.Operator, rule.Threshold, sensorValue))
 
-			log.Printf("Rule triggered: %s - %s %d %s %d",
-				rule.Name, rule.Sensor, sensorValue, rule.Operator, rule.Threshold)
+		// Cooldown logic: only trigger if last trigger was more than 5 seconds ago
+		if triggered {
+			ruleID := rule.ID.Hex()
+			now := time.Now()
+			last, ok := r.lastTriggered[ruleID]
+			if !ok || now.Sub(last) > 5*time.Second {
+				triggeredActions = append(triggeredActions, rule.Action)
+				alerts = append(alerts, fmt.Sprintf("%s: %s %s %d (current: %d)",
+					rule.Name, rule.Sensor, rule.Operator, rule.Threshold, sensorValue))
+
+				log.Printf("Rule triggered: %s - %s %d %s %d",
+					rule.Name, rule.Sensor, sensorValue, rule.Operator, rule.Threshold)
+				r.lastTriggered[ruleID] = now
+			} else {
+				log.Printf("Rule %s cooldown active, not triggered", rule.Name)
+			}
 		}
 	}
 
