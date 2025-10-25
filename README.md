@@ -5,7 +5,7 @@ A modern smart home automation system with real-time sensor monitoring, rule-bas
 ## Demo
 
 
-[![Demo Video](https://i.ibb.co/1YGZjtnV/Demo.png)](https://youtu.be/VcMubtFll-w)
+[![Demo Video](https://i.postimg.cc/MZs7XrQS/Demo.png)](https://youtu.be/VcMubtFll-w)
 
 - View live sensor data (gas, light, soil, water, infrared)
 - Set up automation rules (e.g., "Turn on fan if gas > 100")
