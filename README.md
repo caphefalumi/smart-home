@@ -4,7 +4,8 @@ A modern smart home automation system with real-time sensor monitoring, rule-bas
 
 ## Demo
 
-![Demo Video](https://youtu.be/VcMubtFll-w)
+
+[![Demo Video](https://i.ibb.co/1YGZjtnV/Demo.png)](https://youtu.be/VcMubtFll-w)
 
 - View live sensor data (gas, light, soil, water, infrared)
 - Set up automation rules (e.g., "Turn on fan if gas > 100")
@@ -61,7 +62,7 @@ This project helps homeowners and researchers monitor and automate their environ
 - Connect your Arduino via serial port
 - Add rules and watch automation in action
 
-## 📚 Libraries Used
+## Libraries Used
 
 - [Vue.js](https://vuejs.org/) (frontend)
 - [Vuetify](https://vuetifyjs.com/) (UI components)
@@ -70,6 +71,6 @@ This project helps homeowners and researchers monitor and automate their environ
 - [Gin](https://gin-gonic.com/) (web framework)
 - [MongoDB](https://www.mongodb.com/) (database)
 
-## 📄 License
+## License
 
 This project is licensed under the MIT License. See [LICENSE](LICENSE) for details.
